@@ -1,0 +1,95 @@
+
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css"> <!-- Make sure to link your CSS file here -->
+  <title>WebSocket Chat App</title>
+</head>
+<body>
+
+  <div id="chat-container">
+    <div id="chat-window"></div>
+    <input type="text" id="message-input" placeholder="Type a message...">
+    <button id="send-button">Send</button>
+    <div id="user-list"></div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const ws = new WebSocket('ws://localhost:3000'); // Replace with your WebSocket server URL
+  
+      const chatWindow = document.getElementById('chat-window');
+      const messageInput = document.getElementById('message-input');
+      const sendButton = document.getElementById('send-button');
+      const userList = document.getElementById('user-list');
+  
+      let username = prompt('Enter your username:');
+      if (username && username.trim() !== '') {
+        ws.onopen = () => {
+          console.log('WebSocket is open');
+          ws.send(JSON.stringify({ type: 'join', username: username }));
+        };
+      } else {
+        console.error('Invalid username entered');
+      }
+  
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+  
+        switch (data.type) {
+          case 'userList':
+            updateUserList(data.users);
+            break;
+          case 'message':
+            displayMessage(data.user, data.message);
+            break;
+          case 'userStatus':
+            updateUserStatus(data.username, data.status);
+            break;
+          default:
+            console.error('Unknown message type received:', data.type);
+        }
+      };
+  
+      sendButton.addEventListener('click', () => {
+        const message = messageInput.value.trim();
+        if (message) {
+          ws.send(JSON.stringify({ type: 'message', message: message }));
+          messageInput.value = '';
+        }
+      });
+  
+      function displayMessage(user, message) {
+        const messageElement = document.createElement('div');
+        messageElement.textContent = `${user}: ${message}`;
+        chatWindow.appendChild(messageElement);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+  
+      function updateUserList(users) {
+        userList.innerHTML = '';
+        users.forEach((user) => {
+          const userElement = document.createElement('div');
+          userElement.textContent = user;
+          userList.appendChild(userElement);
+        });
+      }
+  
+      function updateUserStatus(username, status) {
+        const statusElement = document.createElement('div');
+        statusElement.textContent = `${username} is ${status}`;
+        chatWindow.appendChild(statusElement);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+  
+      window.onbeforeunload = () => {
+        ws.send(JSON.stringify({ type: 'disconnect' }));
+      };
+    });
+  </script>
+  
+
+</body>
+</html>
